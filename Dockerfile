@@ -2,25 +2,28 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# 安装 curl 用于健康检查，并清理缓存减小体积
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
-
+# 创建非 root 用户
 RUN useradd -m -u 1000 appuser
 
+# 安装依赖
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 复制应用代码
 COPY app.py .
 COPY config/ ./config/
 
+# 修改权限
 RUN chown -R appuser:appuser /app
+
 USER appuser
 
+# 暴露端口
 EXPOSE 5000
 
-# 动态端口健康检查
+# 不需要安装 curl，直接用 python 执行单行脚本
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:${PORT:-5000}/health || exit 1
+  CMD python -c "import urllib.request as u, os as o; u.urlopen('http://localhost:'+o.environ.get('PORT','5000')+'/health')" || exit 1
 
 CMD ["python", "app.py"]
+这个dockerfile里，如果expose 的端口会被应用通过环境变量修改，有没有什么影响。同时健康检查里的url端口给怎么填写才能适合应用通过环境变量修改了的端口。
