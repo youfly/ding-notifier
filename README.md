@@ -1,39 +1,61 @@
 # 钉钉消息 Webhook 转发器
 
-一个类似于 Apprise 桥接功能的钉钉消息 Webhook 转发器，支持模板渲染和多种数据格式。
+一个类似于 Apprise 桥接功能的钉钉消息 Webhook 转发器，支持模板渲染、JSON/表单数据处理和钉钉加签安全设置。
 
 ## 功能特性
 
-1. **模板支持**: 通过 URL 参数 `template` 指定模板文件（位于 `config` 目录）
-2. **JSON 变量提取**: 支持从嵌套 JSON 中通过点分隔路径引用变量（如 `alert.title`）
-3. **表单参数**: 直接使用参数名作为变量
-4. **Jinja2 模板引擎**: 支持条件判断、循环、过滤器等高级功能
+1. **模板支持**: 通过 URL 参数 `template` 指定模板文件（位于 config 目录）
+2. **灵活变量**: 
+   - JSON POST: 支持点分隔路径引用变量（如 `alert.source`）
+   - 表单参数：直接使用参数名作为变量
+3. **Jinja2 模板引擎**: 强大的模板渲染能力
+4. **钉钉加签安全**: 支持 HMAC-SHA256 签名验证
+5. **Docker 部署**: 完整的 Docker 支持，可配置 config 目录路径
 
-## 安装依赖
+## 快速开始
+
+### 方式一：直接运行
 
 ```bash
-pip install flask requests jinja2
+# 安装依赖
+pip install -r requirements.txt
+
+# 设置环境变量
+export DINGTALK_WEBHOOK_URL="https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN"
+export DINGTALK_SECRET="SECxxxxxxxxxxxxxxx"  # 可选，如果开启了加签安全设置
+
+# 运行服务
+python app.py
+```
+
+### 方式二：Docker 部署
+
+```bash
+# 构建镜像
+docker build -t dingtalk-forwarder .
+
+# 运行容器
+docker run -d \
+  -p 5000:5000 \
+  -e DINGTALK_WEBHOOK_URL="https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN" \
+  -e DINGTALK_SECRET="SECxxxxxxxxxxxxxxx" \
+  -v $(pwd)/config:/app/config \
+  -e CONFIG_DIR=/app/config \
+  --name dingtalk-forwarder \
+  dingtalk-forwarder
+```
+
+### 方式三：Docker Compose
+
+```bash
+# 编辑 docker-compose.yml 配置你的 webhook 和密钥
+# 然后运行：
+docker-compose up -d
 ```
 
 ## 使用方法
 
-### 1. 设置环境变量
-
-```bash
-export DINGTALK_WEBHOOK_URL="https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN"
-export PORT=5000
-export DEBUG=true
-```
-
-### 2. 启动服务
-
-```bash
-python app.py
-```
-
-### 3. 发送消息
-
-#### 方式一：使用模板 + JSON 数据
+### 1. 使用模板 + JSON 数据
 
 ```bash
 curl -X POST http://localhost:5000/webhook?template=alert.json \
@@ -41,8 +63,8 @@ curl -X POST http://localhost:5000/webhook?template=alert.json \
   -d '{
     "title": "服务器告警",
     "severity": "CRITICAL",
-    "timestamp": "2024-01-15 10:30:00",
-    "service": "web-server",
+    "timestamp": "2024-01-01 12:00:00",
+    "service": "nginx",
     "message": "CPU 使用率超过 90%",
     "alert": {
       "source": "prometheus"
@@ -51,16 +73,15 @@ curl -X POST http://localhost:5000/webhook?template=alert.json \
   }'
 ```
 
-#### 方式二：使用模板 + 表单参数
+### 2. 使用模板 + 表单参数
 
 ```bash
 curl -X POST http://localhost:5000/webhook?template=simple.json \
-  -d "event_type=系统通知" \
-  -d "message=系统将于今晚进行维护" \
-  -d "timestamp=2024-01-15"
+  -d "title=通知标题" \
+  -d "content=这是通知内容"
 ```
 
-#### 方式三：不使用模板（直接转发 JSON）
+### 3. 不使用模板，直接转发 JSON
 
 ```bash
 curl -X POST http://localhost:5000/webhook \
@@ -68,29 +89,64 @@ curl -X POST http://localhost:5000/webhook \
   -d '{
     "msgtype": "text",
     "text": {
-      "content": "这是一条测试消息"
+      "content": "直接发送的消息"
     }
   }'
 ```
 
-#### 方式四：覆盖 Webhook URL
+### 4. 覆盖 Webhook 和密钥（可选）
 
 ```bash
-curl -X POST "http://localhost:5000/webhook?webhook_url=https://oapi.dingtalk.com/robot/send?access_token=OTHER_TOKEN" \
+curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=https://...&secret=SEC..." \
   -H "Content-Type: application/json" \
-  -d '{"msgtype": "text", "text": {"content": "测试"}}'
+  -d '{"title": "测试"}'
+```
+
+## 配置说明
+
+### 环境变量
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `DINGTALK_WEBHOOK_URL` | 钉钉 Webhook URL（含 access_token） | 无 |
+| `DINGTALK_SECRET` | 钉钉加签密钥（SEC 开头） | 无 |
+| `CONFIG_DIR` | 配置文件目录路径 | `/app/config` (容器内) 或 `./config` (本地) |
+| `PORT` | 服务端口 | `5000` |
+| `DEBUG` | 调试模式 | `false` |
+
+### 查询参数
+
+| 参数名 | 说明 | 是否必需 |
+|--------|------|----------|
+| `template` | 模板文件名（位于 config 目录） | 否 |
+| `webhook_url` | 覆盖默认的钉钉 Webhook URL | 否 |
+| `secret` | 覆盖默认的钉钉加签密钥 | 否 |
+
+### 目录结构
+
+```
+.
+├── app.py                 # 主程序
+├── requirements.txt       # Python 依赖
+├── Dockerfile            # Docker 镜像构建文件
+├── docker-compose.yml    # Docker Compose 配置
+├── .dockerignore         # Docker 忽略文件
+├── README.md             # 说明文档
+└── config/               # 配置目录（可挂载）
+    ├── alert.json        # 告警模板示例
+    └── simple.json       # 简单通知模板示例
 ```
 
 ## 模板示例
 
-### Markdown 模板 (config/alert.json)
+### Markdown 格式告警模板 (config/alert.json)
 
 ```json
 {
   "msgtype": "markdown",
   "markdown": {
     "title": "{{ title | default('告警通知') }}",
-    "text": "## {{ title }}\n\n**级别**: {{ severity }}\n**时间**: {{ timestamp }}\n\n{{ message }}"
+    "text": "## {{ title | default('系统告警') }}\n\n**级别**: {{ severity | default('INFO') }}\n**时间**: {{ timestamp | default('未知') }}\n**服务**: {{ service | default('未知') }}\n\n### 详情\n{{ message | default('无详细信息') }}\n\n{% if alert %}\n**告警源**: {{ alert.source | default('未知') }}\n{% endif %}"
   },
   "at": {
     "isAtAll": {{ at_all | default('false') | lower }}
@@ -98,43 +154,44 @@ curl -X POST "http://localhost:5000/webhook?webhook_url=https://oapi.dingtalk.co
 }
 ```
 
-### 文本模板 (config/simple.json)
+### 文本格式简单模板 (config/simple.json)
 
 ```json
 {
   "msgtype": "text",
   "text": {
-    "content": "【{{ event_type }}】\n{{ message }}\n\n时间：{{ timestamp }}"
+    "content": "{{ title }}: {{ content }}"
   }
 }
 ```
 
-## 变量引用规则
+## 钉钉加签说明
 
-### JSON 数据
-- 扁平化嵌套对象，支持点分隔路径
-- 例如：`{"alert": {"source": "prometheus"}}` 可以通过 `alert.source` 引用
+如果钉钉机器人开启了"加签安全设置"，需要：
 
-### 表单数据
-- 直接使用参数名
-- 例如：`title=测试` 可以通过 `title` 引用
+1. 设置 `DINGTALK_SECRET` 环境变量为 SEC 开头的密钥
+2. 或者在请求时通过 `secret` 参数传递密钥
 
-## API 端点
+程序会自动计算签名并附加 `timestamp` 和 `sign` 参数到请求中。
 
-- `POST /webhook` - 主 Webhook 入口
-  - 查询参数：
-    - `template`: 模板文件名（可选，位于 config 目录）
-    - `webhook_url`: 覆盖默认的钉钉 Webhook URL（可选）
-  
-- `GET /health` - 健康检查
-
-## 目录结构
-
+签名算法：
 ```
-/workspace
-├── app.py              # 主程序
-├── config/             # 模板目录
-│   ├── alert.json      # 告警模板示例
-│   └── simple.json     # 简单文本模板示例
-└── README.md           # 说明文档
+string_to_sign = timestamp + '\n' + secret
+sign = HMAC-SHA256(string_to_sign, secret)
+sign = URL_ENCODE(sign)
 ```
+
+## 健康检查
+
+```bash
+curl http://localhost:5000/health
+```
+
+返回：
+```json
+{"status": "healthy"}
+```
+
+## License
+
+MIT
