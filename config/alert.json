@@ -1,0 +1,10 @@
+{
+  "msgtype": "markdown",
+  "markdown": {
+    "title": "{{ title | default('告警通知') }}",
+    "text": "## {{ title | default('系统告警') }}\n\n**级别**: {{ severity | default('INFO') }}\n**时间**: {{ timestamp | default('未知') }}\n**服务**: {{ service | default('未知') }}\n\n### 详情\n{{ message | default('无详细信息') }}\n\n{% if alert %}\n**告警源**: {{ alert.source | default('未知') }}\n{% endif %}"
+  },
+  "at": {
+    "isAtAll": {{ at_all | default('false') | lower }}
+  }
+}
