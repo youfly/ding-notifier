@@ -190,9 +190,27 @@ def webhook():
             return jsonify({"error": f"模板处理错误: {str(e)}"}), 500
     else:
         # 无模板模式：直接使用 POST 的数据作为 payload
-        logger.info("无模板模式，直接使用请求数据作为 Payload")
+        logger.info("无模板模式，尝试构建钉钉 Payload")
+        
         if request.is_json:
-            dingtalk_payload = request.get_json()
+            raw_data = request.get_json()
+            
+            # 【关键修复】检查是否包含 msgtype
+            if isinstance(raw_data, dict) and 'msgtype' in raw_data:
+                # 如果用户已经构造了完整的钉钉格式，直接透传
+                logger.info("检测到完整钉钉格式 (含 msgtype)，直接透传")
+                dingtalk_payload = raw_data
+            else:
+                # 如果只是业务数据，自动包装为 text 消息
+                logger.info("未检测到 msgtype，自动包装为 text 消息")
+                content = json.dumps(raw_data, ensure_ascii=False)
+                if len(content) > 200:
+                    content = content[:197] + "..."
+                dingtalk_payload = {
+                    "msgtype": "text",
+                    "text": {"content": f"消息内容: {content}"}
+                }
+                
         elif request.form:
             # 表单数据转换为 text 消息
             content = "\n".join([f"{k}: {v}" for k, v in request.form.items()])
@@ -202,7 +220,6 @@ def webhook():
             }
         else:
             return jsonify({"error": "无模板模式下必须提供 JSON 或表单数据"}), 400
-
     # 发送到钉钉
     success, message = send_to_dingtalk(webhook_url, dingtalk_payload, secret)
     
