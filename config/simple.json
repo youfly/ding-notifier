@@ -1,9 +1,0 @@
-{
-  "msgtype": "text",
-  "text": {
-    "content": "【{{ event_type | default('事件通知') }}】\n{{ message }}\n\n时间：{{ timestamp | default('未知') }}"
-  },
-  "at": {
-    "mobiles": ["{{ mobile | default('') }}"]
-  }
-}
