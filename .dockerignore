@@ -1,0 +1,26 @@
+# 忽略 Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 虚拟环境
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志
+*.log
+
+# 敏感信息
+config/*.secret
+config/*_secret.json
+
+# Docker
+.DS_Store

@@ -11,15 +11,20 @@
 
 import os
 import json
+import hmac
+import hashlib
+import time
+import urllib.parse
 import requests
 from flask import Flask, request, jsonify, abort
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 app = Flask(__name__)
 
-# 配置
-CONFIG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config')
+# 配置 - CONFIG_DIR 可通过环境变量覆盖，默认使用容器内 /app/config
+CONFIG_DIR = os.environ.get('CONFIG_DIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config'))
 DINGTALK_WEBHOOK_URL = os.environ.get('DINGTALK_WEBHOOK_URL', '')
+DINGTALK_SECRET = os.environ.get('DINGTALK_SECRET', '')
 
 # 确保 config 目录存在
 os.makedirs(CONFIG_DIR, exist_ok=True)
@@ -29,6 +34,21 @@ jinja_env = Environment(
     loader=FileSystemLoader(CONFIG_DIR),
     autoescape=False
 )
+
+
+def generate_sign(secret: str, timestamp: str) -> str:
+    """
+    生成钉钉加签签名
+    secret: 加签密钥 (SEC开头)
+    timestamp: 时间戳 (毫秒)
+    """
+    string_to_sign = f'{timestamp}\n{secret}'
+    sign = hmac.new(
+        secret.encode('utf-8'),
+        string_to_sign.encode('utf-8'),
+        digestmod=hashlib.sha256
+    ).digest()
+    return urllib.parse.quote_plus(sign, safe='')
 
 
 def extract_json_value(data: dict, path: str):
@@ -109,14 +129,24 @@ def render_template(template_name: str, variables: dict) -> dict:
         raise ValueError(f"模板渲染失败: {str(e)}")
 
 
-def send_to_dingtalk(message_data: dict, webhook_url: str = None) -> dict:
+def send_to_dingtalk(message_data: dict, webhook_url: str = None, secret: str = None) -> dict:
     """
     发送消息到钉钉
+    支持加签安全设置
     """
     url = webhook_url or DINGTALK_WEBHOOK_URL
+    ding_secret = secret or DINGTALK_SECRET
     
     if not url:
         raise ValueError("未配置钉钉 Webhook URL")
+    
+    # 如果配置了密钥，则添加签名参数
+    if ding_secret:
+        timestamp = str(round(time.time() * 1000))
+        sign = generate_sign(ding_secret, timestamp)
+        # 拼接签名参数
+        separator = '&' if '?' in url else '?'
+        url = f"{url}{separator}timestamp={timestamp}&sign={sign}"
     
     headers = {'Content-Type': 'application/json'}
     response = requests.post(url, json=message_data, headers=headers, timeout=10)
@@ -137,9 +167,11 @@ def webhook():
     支持查询参数:
     - template: 模板文件名（可选，位于 config 目录）
     - webhook_url: 覆盖默认的钉钉 Webhook URL（可选）
+    - secret: 覆盖默认的钉钉加签密钥（可选）
     """
     template_name = request.args.get('template')
     override_webhook = request.args.get('webhook_url')
+    override_secret = request.args.get('secret')
     
     # 判断请求类型
     if request.is_json:
@@ -178,7 +210,7 @@ def webhook():
     
     # 发送到钉钉
     try:
-        result = send_to_dingtalk(message_data, override_webhook)
+        result = send_to_dingtalk(message_data, override_webhook, override_secret)
         if result['success']:
             return jsonify({
                 "status": "success",
