@@ -1,0 +1,6 @@
+{
+  "msgtype": "text",
+  "text": {
+    "content": "【{{ title | default('通知') }}】\n{{ content | default('无内容') }}"
+  }
+}
