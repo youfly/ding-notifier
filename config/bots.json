@@ -1,0 +1,14 @@
+{
+  "default": {
+    "url": "https://oapi.dingtalk.com/robot/send?access_token=YOUR_DEFAULT_TOKEN",
+    "secret": "SEC_YOUR_DEFAULT_SECRET"
+  },
+  "ops_team": {
+    "url": "https://oapi.dingtalk.com/robot/send?access_token=YOUR_OPS_TOKEN",
+    "secret": "SEC_YOUR_OPS_SECRET"
+  },
+  "dev_team": {
+    "url": "https://oapi.dingtalk.com/robot/send?access_token=YOUR_DEV_TOKEN",
+    "secret": ""
+  }
+}
