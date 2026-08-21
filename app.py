@@ -6,9 +6,11 @@ import hashlib
 import base64
 import time
 import logging
-from flask import Flask, request, jsonify, Response
+from datetime import datetime
+from flask import Flask, request, jsonify
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import requests
+import urllib.parse
 
 # 配置日志
 logging.basicConfig(
@@ -22,16 +24,14 @@ app = Flask(__name__)
 # 获取配置目录路径
 CONFIG_DIR = os.environ.get('CONFIG_DIR', './config')
 if not os.path.isabs(CONFIG_DIR):
-    # 如果是相对路径，转为绝对路径（基于当前工作目录）
     CONFIG_DIR = os.path.join(os.getcwd(), CONFIG_DIR)
 
 # 初始化 Jinja2 模板引擎
+env = None
 try:
     if not os.path.exists(CONFIG_DIR):
-        logger.error(f"配置目录不存在: {CONFIG_DIR}")
-        # 尝试创建目录以防万一
+        logger.warning(f"配置目录不存在，正在创建: {CONFIG_DIR}")
         os.makedirs(CONFIG_DIR, exist_ok=True)
-        logger.info(f"已创建配置目录: {CONFIG_DIR}")
     
     env = Environment(loader=FileSystemLoader(CONFIG_DIR))
     logger.info(f"模板引擎初始化成功，目录: {CONFIG_DIR}")
@@ -41,7 +41,6 @@ try:
     logger.info(f"配置目录下文件列表: {files}")
 except Exception as e:
     logger.error(f"模板引擎初始化失败: {e}")
-    env = None
 
 def flatten_json(data, parent_key='', sep='.'):
     """扁平化 JSON 对象，支持点分隔符访问"""
@@ -69,13 +68,12 @@ def send_to_dingtalk(webhook_url, payload, secret=None):
     """发送消息到钉钉"""
     url = webhook_url
     
-    # 如果提供了密钥，添加签名参数
     if secret:
         timestamp = str(round(time.time() * 1000))
         sign = generate_sign(secret, timestamp)
         separator = '&' if '?' in url else '?'
         url = f"{url}{separator}timestamp={timestamp}&sign={sign}"
-        logger.info(f"已添加签名参数: timestamp={timestamp}, sign={sign[:10]}...")
+        logger.info(f"已添加签名参数: timestamp={timestamp}, sign={sign[:15]}...")
     
     logger.info(f"正在发送到钉钉: {url}")
     logger.debug(f"请求 Payload: {json.dumps(payload, ensure_ascii=False)}")
@@ -123,10 +121,11 @@ def webhook():
     
     # 解析请求数据
     data_vars = {}
+    raw_text = None
+    
     if request.is_json:
         logger.info("检测到 JSON 数据")
         json_data = request.get_json()
-        # 扁平化 JSON 以便使用点分隔符访问
         data_vars = flatten_json(json_data)
         logger.info(f"扁平化后的变量: {data_vars}")
     elif request.form:
@@ -134,14 +133,15 @@ def webhook():
         data_vars = dict(request.form)
         logger.info(f"表单变量: {data_vars}")
     elif request.data:
-        # 尝试解析为 JSON，如果失败则作为纯文本
+        # 尝试解析为 JSON，失败则作为纯文本
         try:
             json_data = json.loads(request.data)
             data_vars = flatten_json(json_data)
             logger.info(f"解析为 JSON 变量: {data_vars}")
         except json.JSONDecodeError:
-            logger.info("数据既不是 JSON 也不是表单，作为纯文本处理")
-            data_vars = {"raw_text": request.data.decode('utf-8')}
+            raw_text = request.data.decode('utf-8')
+            logger.info(f"作为纯文本处理: {raw_text[:50]}...")
+            data_vars = {"raw_text": raw_text}
     else:
         logger.info("无请求体数据")
 
@@ -153,16 +153,29 @@ def webhook():
             return jsonify({"error": "模板引擎未初始化"}), 500
         
         try:
-            # 尝试加载模板 (自动添加 .json 后缀如果用户没写)
-            template_file = template_name
-            if not template_name.endswith('.json'):
-                template_file = f"{template_name}.json"
-            
+            # 自动补全 .json 后缀
+            template_file = template_name if template_name.endswith('.json') else f"{template_name}.json"
             logger.info(f"正在加载模板文件: {template_file}")
+            
             template = env.get_template(template_file)
             
+            # 【新增】注入时间变量
+            now_dt = datetime.now()
+            time_vars = {
+                'now': now_dt.strftime('%Y-%m-%d %H:%M:%S'),
+                'date': now_dt.strftime('%Y-%m-%d'),
+                'time': now_dt.strftime('%H:%M:%S'),
+                'timestamp': int(now_dt.timestamp()),
+                'iso_time': now_dt.isoformat(),
+                'utc_time': now_dt.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+            # 合并业务数据和时间变量 (业务数据优先级更高)
+            render_context = {**time_vars, **data_vars}
+            logger.info(f"渲染上下文变量: {list(render_context.keys())}")
+            
             # 渲染模板
-            rendered_content = template.render(**data_vars)
+            rendered_content = template.render(**render_context)
             logger.info(f"模板渲染成功: {rendered_content[:100]}...")
             
             # 解析渲染后的 JSON
@@ -175,7 +188,6 @@ def webhook():
                 
         except TemplateNotFound:
             logger.error(f"模板文件未找到: {template_file}")
-            # 列出可用模板帮助调试
             try:
                 available_files = os.listdir(CONFIG_DIR)
                 return jsonify({
@@ -189,37 +201,36 @@ def webhook():
             logger.error(f"模板处理异常: {e}")
             return jsonify({"error": f"模板处理错误: {str(e)}"}), 500
     else:
-        # 无模板模式：直接使用 POST 的数据作为 payload
-        logger.info("无模板模式，尝试构建钉钉 Payload")
+        # 无模板模式：智能构建 Payload
+        logger.info("无模板模式，智能构建 Payload")
         
         if request.is_json:
-            raw_data = request.get_json()
-            
-            # 【关键修复】检查是否包含 msgtype
-            if isinstance(raw_data, dict) and 'msgtype' in raw_data:
-                # 如果用户已经构造了完整的钉钉格式，直接透传
-                logger.info("检测到完整钉钉格式 (含 msgtype)，直接透传")
-                dingtalk_payload = raw_data
+            json_data = request.get_json()
+            # 如果包含 msgtype，直接透传
+            if 'msgtype' in json_data:
+                dingtalk_payload = json_data
+                logger.info("检测到 msgtype，直接透传 JSON")
             else:
-                # 如果只是业务数据，自动包装为 text 消息
-                logger.info("未检测到 msgtype，自动包装为 text 消息")
-                content = json.dumps(raw_data, ensure_ascii=False)
-                if len(content) > 200:
-                    content = content[:197] + "..."
-                dingtalk_payload = {
-                    "msgtype": "text",
-                    "text": {"content": f"消息内容: {content}"}
-                }
+                # 否则将业务数据转换为 text 消息
+                content_lines = [f"{k}: {v}" for k, v in json_data.items()]
+                content = "\n".join(content_lines) if content_lines else json.dumps(json_data, ensure_ascii=False)
+                dingtalk_payload = {"msgtype": "text", "text": {"content": content}}
+                logger.info(f"自动包装为 text 消息: {content[:50]}...")
                 
         elif request.form:
-            # 表单数据转换为 text 消息
-            content = "\n".join([f"{k}: {v}" for k, v in request.form.items()])
-            dingtalk_payload = {
-                "msgtype": "text",
-                "text": {"content": content}
-            }
+            content_lines = [f"{k}: {v}" for k, v in request.form.items()]
+            content = "\n".join(content_lines)
+            dingtalk_payload = {"msgtype": "text", "text": {"content": content}}
+            logger.info(f"表单数据转换为 text 消息: {content[:50]}...")
+            
+        elif raw_text:
+            # 纯文本直接作为 content
+            dingtalk_payload = {"msgtype": "text", "text": {"content": raw_text}}
+            logger.info(f"纯文本转换为 text 消息: {raw_text[:50]}...")
+            
         else:
-            return jsonify({"error": "无模板模式下必须提供 JSON 或表单数据"}), 400
+            return jsonify({"error": "无模板模式下必须提供 JSON、表单或文本数据"}), 400
+
     # 发送到钉钉
     success, message = send_to_dingtalk(webhook_url, dingtalk_payload, secret)
     
@@ -229,9 +240,6 @@ def webhook():
         return jsonify({"status": "failed", "error": message}), 502
 
 if __name__ == '__main__':
-    # 延迟导入以避免某些环境下的问题
-    import urllib.parse
-    
     host = os.environ.get('HOST', '0.0.0.0')
     port = int(os.environ.get('PORT', 5000))
     
