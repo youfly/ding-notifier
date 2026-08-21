@@ -1,0 +1,10 @@
+{
+  "msgtype": "markdown",
+  "markdown": {
+    "title": "{{ level }}: {{ service }} 告警",
+    "text": "## {{ level }} 告警\n\n**服务**: {{ service }}\n**时间**: {{ now | default('未知时间') }}\n**详情**: {{ message }}\n\n{{ extra | default('') }}"
+  },
+  "at": {
+    "isAtAll": true
+  }
+}
