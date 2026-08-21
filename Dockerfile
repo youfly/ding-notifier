@@ -2,24 +2,25 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# 安装依赖
+# 安装 curl 用于健康检查，并清理缓存减小体积
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN useradd -m -u 1000 appuser
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制应用代码
 COPY app.py .
 COPY config/ ./config/
 
-# 创建非 root 用户运行应用
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app
 USER appuser
 
-# 暴露端口
 EXPOSE 5000
 
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:5000/health', timeout=5)" || exit 1
+# 动态端口健康检查
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-5000}/health || exit 1
 
-# 启动应用
 CMD ["python", "app.py"]
