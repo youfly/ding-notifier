@@ -13,7 +13,7 @@ def create_app():
     app.config.from_object(Config)
     
     # 初始化模板服务并挂载到 app
-    app.config['TEMPLATE_SERVICE'] = TemplateService(Config.CONFIG_DIR)
+    app.config['TEMPLATE_SERVICE'] = TemplateService(Config.TEMPLATE_DIR)    
     
     # 初始化多钉钉机器人管理器
     app.config['BOT_MANAGER'] = BotManager(Config.CONFIG_DIR)
