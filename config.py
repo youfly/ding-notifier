@@ -12,7 +12,7 @@ class Config:
         CONFIG_DIR = os.path.join(os.getcwd(), CONFIG_DIR)
         
     # 模板专用目录
-    TEMPLATE_DIR = os.path.join(CONFIG_DIR, 'template')
+    TEMPLATE_DIR = os.path.join(CONFIG_DIR, 'templates')
 
     @classmethod
     def setup_logging(cls):
