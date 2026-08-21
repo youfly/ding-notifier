@@ -21,7 +21,7 @@ services:
       - ./config:/app/config
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/health', timeout=5)"]
+      test: ["CMD", "python", "-c", "import urllib.request as u, os as o; u.urlopen('http://localhost:'+o.environ.get('PORT','5000')+'/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
