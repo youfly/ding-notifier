@@ -69,12 +69,10 @@ class TemplateService:
 
         now = datetime.now()
         time_vars = {
-            'now': now.strftime('%Y-%m-%d %H:%M:%S'),
-            'date': now.strftime('%Y-%m-%d'),
-            'time': now.strftime('%H:%M:%S'),
-            'timestamp': int(now.timestamp()),
-            'iso_time': now.isoformat(),
-            'utc_time': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+            '_now': now.strftime('%Y-%m-%d %H:%M:%S'),  # 最常用的：当前本地时间 (如 2026-08-22 16:30:00)
+            '_date': now.strftime('%Y-%m-%d'),          # 当前日期 (如 2026-08-22)
+            '_time': now.strftime('%H:%M:%S'),          # 当前时间 (如 16:30:00)
+            '_timestamp': int(now.timestamp())          # 当前 Unix 时间戳 (秒)
         }
 
         context = {**time_vars, **data_vars}
