@@ -194,7 +194,7 @@ sign = URL_ENCODE(sign)
 ## 健康检查
 
 ```bash
-curl http://localhost:5000/health
+curl http://localhost:5005/health
 ```
 
 返回：
