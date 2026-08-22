@@ -3,7 +3,7 @@ version: '3.8'
 services:
   ding-notifier:
     container_name: ding-notifier
-    image: ghcr.io/ding-notifier:lastest
+    image:  ghcr.io/youfly/ding-notifier:main
     ports:
       - "5005:5005"
     environment:
@@ -11,8 +11,6 @@ services:
       - CONFIG_DIR=/app/config
       # 服务端口 (可选，默认 5000)
       - PORT=5005
-      # 调试模式 (可选，默认 false)
-      - DEBUG=false
     volumes:
       # 挂载 config 目录到容器，方便修改模板和变量文件
       - ./config:/app/config
