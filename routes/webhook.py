@@ -1,6 +1,7 @@
 import json
 import logging
 from flask import Blueprint, request, jsonify, current_app
+from utils.helpers import flatten_json
 from services.dingtalk import DingTalkService
 
 logger = logging.getLogger(__name__)
