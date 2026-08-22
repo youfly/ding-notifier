@@ -112,11 +112,10 @@ curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=http
 ## 配置说明
 
 ### 环境变量
-
+钉钉机器人配置的密钥在config/bots.json里，名字为default表示未指定bot参数时默认使用的机器人。
+钉钉消息的模板存放在config/templates目录下，可以通过请求的template参数指定名称。
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
-| `DINGTALK_WEBHOOK_URL` | 钉钉 Webhook URL（含 access_token） | 无 |
-| `DINGTALK_SECRET` | 钉钉加签密钥（SEC 开头） | 无 |
 | `CONFIG_DIR` | 配置文件目录路径 | `/app/config` (容器内) 或 `./config` (本地) |
 | `PORT` | 服务端口 | `5000` |
 | `DEBUG` | 调试模式 | `false` |
@@ -125,7 +124,8 @@ curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=http
 
 | 参数名 | 说明 | 是否必需 |
 |--------|------|----------|
-| `template` | 模板文件名（位于 config 目录） | 否 |
+| `bot` | 机器人名字(config/bots.json中配置)，默default | 否 |
+| `template` | 模板文件名（位于 config/templates 目录） | 否 |
 | `webhook_url` | 覆盖默认的钉钉 Webhook URL | 否 |
 | `secret` | 覆盖默认的钉钉加签密钥 | 否 |
 
@@ -139,14 +139,22 @@ curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=http
 ├── docker-compose.yml    # Docker Compose 配置
 ├── .dockerignore         # Docker 忽略文件
 ├── README.md             # 说明文档
-└── config/               # 配置目录（可挂载）
+└── config/templates               # 配置目录（可挂载）
     ├── alert.json        # 告警模板示例
     └── simple.json       # 简单通知模板示例
 ```
 
 ## 模板示例
 
-### Markdown 格式告警模板 (config/alert.json)
+在模板模式下，系统会自动注入时间变量：now（格式：2026-08-21 22:30:00）、now_date（日期）、now_time（时间）、timestamp（时间戳），可直接在模板中使用如{{ now }}来显示当前时间。
+            'now': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'date': now.strftime('%Y-%m-%d'),
+            'time': now.strftime('%H:%M:%S'),
+            'timestamp': int(now.timestamp()),
+            'iso_time': now.isoformat(),
+            'utc_time': now.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+### Markdown 格式告警模板 (config/templates/alert.json)
 
 ```json
 {
@@ -161,7 +169,7 @@ curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=http
 }
 ```
 
-### 文本格式简单模板 (config/simple.json)
+### 文本格式简单模板 (config/templates/simple.json)
 
 ```json
 {
