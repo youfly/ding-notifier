@@ -3,7 +3,7 @@ import logging
 
 class Config:
     HOST = os.environ.get('HOST', '0.0.0.0')
-    PORT = int(os.environ.get('PORT', 5000))
+    PORT = int(os.environ.get('PORT', 5005))
     # 基础配置目录 (存放 bots.json 等)
     CONFIG_DIR = os.environ.get('CONFIG_DIR', './config')
     
