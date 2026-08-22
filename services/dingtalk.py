@@ -1,11 +1,21 @@
 import logging
 import time
 import requests
-from utils.helpers import generate_dingtalk_sign
 
 logger = logging.getLogger(__name__)
 
 class DingTalkService:
+    @staticmethod
+    def generate_dingtalk_sign(secret, timestamp):
+        """生成钉钉加签签名"""
+        string_to_sign = f'{timestamp}\n{secret}'
+        hmac_code = hmac.new(
+            secret.encode('utf-8'),
+            string_to_sign.encode('utf-8'),
+            digestmod=hashlib.sha256
+        ).digest()
+        return urllib.parse.quote_plus(base64.b64encode(hmac_code))
+        
     @staticmethod
     def send_message(webhook_url, payload, secret=None):
         url = webhook_url
