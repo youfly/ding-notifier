@@ -12,7 +12,7 @@ def create_app():
     # 加载配置
     app.config.from_object(Config)
 
-    让 jsonify 不转义中文，避免错误信息变成 \uXXXX
+    # 让 jsonify 不转义中文，避免错误信息变成 \uXXXX
     app.json.ensure_ascii = False
     
     # 初始化模板服务并挂载到 app
