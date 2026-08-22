@@ -118,7 +118,6 @@ curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=http
 |--------|------|--------|
 | `CONFIG_DIR` | 配置文件目录路径 | `/app/config` (容器内) 或 `./config` (本地) |
 | `PORT` | 服务端口 | `5000` |
-| `DEBUG` | 调试模式 | `false` |
 
 ### 查询参数
 
