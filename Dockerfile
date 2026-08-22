@@ -26,4 +26,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request as u, os as o; u.urlopen('http://localhost:'+o.environ.get('PORT','5000')+'/health')" || exit 1
 
 CMD ["python", "app.py"]
-这个dockerfile里，如果expose 的端口会被应用通过环境变量修改，有没有什么影响。同时健康检查里的url端口给怎么填写才能适合应用通过环境变量修改了的端口。
