@@ -5,7 +5,7 @@ services:
     container_name: ding-notifier
     image: ghcr.io/ding-notifier:lastest
     ports:
-      - "5000:5000"
+      - "5005:5005"
     environment:
       # 配置目录路径 (可选，默认 /app/config)
       - CONFIG_DIR=/app/config
