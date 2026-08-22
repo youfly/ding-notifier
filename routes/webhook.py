@@ -8,16 +8,28 @@ webhook_bp = Blueprint('webhook', __name__)
 
 def parse_request_body():
     """统一解析请求体，返回 (data_vars, raw_text)"""
+    
+    # 1. 如果声明了是 JSON
     if request.is_json:
-        return request.get_json(), None
+        # 【关键修改】加入 silent=True，解析失败时返回 None 而不是抛出 400 异常
+        json_data = request.get_json(silent=True)
+        if json_data is not None:
+            return json_data, None
+            
+    # 2. 如果是表单数据
     if request.form:
         return dict(request.form), None
+        
+    # 3. 如果有原始数据 (包括声明了 JSON 但解析失败的，以及纯文本)
     if request.data:
         try:
+            # 尝试手动解析为 JSON
             return json.loads(request.data), None
-        except json.JSONDecodeError:
-            text = request.data.decode('utf-8')
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            # 解析失败，降级为纯文本处理
+            text = request.data.decode('utf-8', errors='ignore')
             return {"raw_text": text}, text
+            
     return {}, None
 
 def build_smart_payload(data_vars, raw_text):
