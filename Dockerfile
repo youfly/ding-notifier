@@ -10,8 +10,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制应用代码
-COPY app.py .
-COPY config/ ./config/
+# 【关键】复制所有 Python 源码模块
+COPY app.py config.py ./
+COPY routes/    ./routes/
+COPY services/  ./services/
+COPY utils/     ./utils/
 
 # 修改权限
 RUN chown -R appuser:appuser /app
