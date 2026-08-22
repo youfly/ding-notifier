@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  dingtalk-notifier:
+  ding-notifier:
     container_name: ding-notifier
     image: ghcr.io/ding-notifier:lastest
     ports:
