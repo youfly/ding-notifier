@@ -14,7 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py config.py ./
 COPY routes/    ./routes/
 COPY services/  ./services/
-COPY utils/     ./utils/
 
 # 修改权限
 RUN chown -R appuser:appuser /app
