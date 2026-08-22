@@ -48,15 +48,15 @@ python app.py
 
 ```bash
 # 构建镜像
-docker build -t dingtalk-notifier .
+docker build -t ding-notifier .
 
 # 运行容器
 docker run -d \
-  -p 5000:5000 \
+  -p 5005:5005 \
   -v $(pwd)/config:/app/config \
   -e CONFIG_DIR=/app/config \
   --name dingtalk-notifier \
-  dingtalk-notifier
+  ding-notifier
 ```
 
 ### 方式三：Docker Compose
@@ -72,7 +72,7 @@ docker-compose up -d
 ### 1. 使用模板 + JSON 数据
 
 ```bash
-curl -X POST http://localhost:5000/webhook?template=alert.json \
+curl -X POST http://localhost:5005/webhook?template=alert.json \
   -H "Content-Type: application/json" \
   -d '{
     "title": "服务器告警",
@@ -90,7 +90,7 @@ curl -X POST http://localhost:5000/webhook?template=alert.json \
 ### 2. 使用模板 + 表单参数
 
 ```bash
-curl -X POST http://localhost:5000/webhook?template=simple.json \
+curl -X POST http://localhost:5005/webhook?template=simple.json \
   -d "title=通知标题" \
   -d "content=这是通知内容"
 ```
@@ -98,7 +98,7 @@ curl -X POST http://localhost:5000/webhook?template=simple.json \
 ### 3. 不使用模板，直接转发 JSON
 
 ```bash
-curl -X POST http://localhost:5000/webhook \
+curl -X POST http://localhost:5005/webhook \
   -H "Content-Type: application/json" \
   -d '{
     "msgtype": "text",
@@ -111,7 +111,7 @@ curl -X POST http://localhost:5000/webhook \
 ### 4. 覆盖 Webhook 和密钥（可选）
 
 ```bash
-curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=https://...&secret=SEC..." \
+curl -X POST "http://localhost:5005/webhook?template=alert.json&webhook_url=https://...&secret=SEC..." \
   -H "Content-Type: application/json" \
   -d '{"title": "测试"}'
 ```
@@ -124,7 +124,7 @@ curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=http
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
 | `CONFIG_DIR` | 配置文件目录路径 | `/app/config` (容器内) 或 `./config` (本地) |
-| `PORT` | 服务端口 | `5000` |
+| `PORT` | 服务端口 | `5005` |
 
 ### 查询参数
 
@@ -152,14 +152,21 @@ curl -X POST "http://localhost:5000/webhook?template=alert.json&webhook_url=http
 
 ## 模板示例
 
-在模板模式下，系统会自动注入时间变量：now（格式：2026-08-21 22:30:00）、now_date（日期）、now_time（时间）、timestamp（时间戳），可直接在模板中使用如{{ now }}来显示当前时间。
-            'now': now.strftime('%Y-%m-%d %H:%M:%S'),
-            'date': now.strftime('%Y-%m-%d'),
-            'time': now.strftime('%H:%M:%S'),
-            'timestamp': int(now.timestamp()),
-            'iso_time': now.isoformat(),
-            'utc_time': now.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+在模板模式下，系统会自动注入时间变量：
+_now（如：2026-08-21 22:30:00）、_date（如：2026-08-22）、_time（如: 11:59:47）、_timestamp（如: 1784798387），可直接在模板中使用,如{{ _now }}来显示当前时间。
+### 系统内置时间变量
+你可以直接使用以下预定义的时间变量：
 
+```python
+{
+    '_now': now.strftime('%Y-%m-%d %H:%M:%S'),    # 当前完整时间 (如: 2026-08-22 11:59:47)
+    '_date': now.strftime('%Y-%m-%d'),            # 当前日期 (如: 2026-08-22)
+    '_time': now.strftime('%H:%M:%S'),            # 当前时间 (如: 11:59:47)
+    '_timestamp': int(now.timestamp())            # 当前秒级时间戳 (如: 1784798387)
+}
+```
+
+同时注入了json_escape函数用于json转义，format_time用于格式化时间日期。
 ### Markdown 格式告警模板 (config/templates/alert.json)
 
 ```json
