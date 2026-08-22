@@ -6,6 +6,13 @@ from services.dingtalk import DingTalkService
 logger = logging.getLogger(__name__)
 webhook_bp = Blueprint('webhook', __name__)
 
+def flatten_json(data, parent_key='', sep='.'):
+    """扁平化 JSON 对象，支持点分隔符访问"""
+    items = []
+    for k, v in data.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            
 def parse_request_body():
     """统一解析请求体，返回 (data_vars, raw_text)"""
     
@@ -42,7 +49,8 @@ def build_smart_payload(data_vars, raw_text):
     if raw_text:
         content = raw_text
     elif isinstance(data_vars, dict):
-        content = "\n".join([f"{k}: {v}" for k, v in data_vars.items()]) or json.dumps(data_vars, ensure_ascii=False)
+        flat_data = flatten_json(data_vars)
+        content = "\n".join([f"{k}: {v}" for k, v in flat_data.items()]) or json.dumps(data_vars, ensure_ascii=False)
     else:
         content = str(data_vars)
         
