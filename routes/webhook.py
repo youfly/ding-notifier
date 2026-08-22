@@ -12,6 +12,10 @@ def flatten_json(data, parent_key='', sep='.'):
     for k, v in data.items():
         new_key = f"{parent_key}{sep}{k}" if parent_key else k
         if isinstance(v, dict):
+            items.extend(flatten_json(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
             
 def parse_request_body():
     """统一解析请求体，返回 (data_vars, raw_text)"""
