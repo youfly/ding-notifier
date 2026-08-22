@@ -19,10 +19,10 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # 暴露端口
-EXPOSE 5000
+EXPOSE 5005
 
 # 不需要安装 curl，直接用 python 执行单行脚本
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request as u, os as o; u.urlopen('http://localhost:'+o.environ.get('PORT','5000')+'/health')" || exit 1
+  CMD python -c "import urllib.request as u, os as o; u.urlopen('http://localhost:'+o.environ.get('PORT','5005')+'/health')" || exit 1
 
 CMD ["python", "app.py"]
