@@ -1,6 +1,10 @@
 import logging
 import time
+import hmac
+import hashlib
+import base64
 import requests
+import urllib.parse
 
 logger = logging.getLogger(__name__)
 
