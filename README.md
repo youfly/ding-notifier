@@ -27,9 +27,7 @@
 # 安装依赖
 pip install -r requirements.txt
 
-# 设置环境变量
-export DINGTALK_WEBHOOK_URL="https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN"
-export DINGTALK_SECRET="SECxxxxxxxxxxxxxxx"  # 可选，如果开启了加签安全设置
+config/bots.json设置钉钉机器人密钥等信息
 
 # 运行服务
 python app.py
@@ -39,17 +37,15 @@ python app.py
 
 ```bash
 # 构建镜像
-docker build -t dingtalk-forwarder .
+docker build -t dingtalk-notifier .
 
 # 运行容器
 docker run -d \
   -p 5000:5000 \
-  -e DINGTALK_WEBHOOK_URL="https://oapi.dingtalk.com/robot/send?access_token=YOUR_TOKEN" \
-  -e DINGTALK_SECRET="SECxxxxxxxxxxxxxxx" \
   -v $(pwd)/config:/app/config \
   -e CONFIG_DIR=/app/config \
-  --name dingtalk-forwarder \
-  dingtalk-forwarder
+  --name dingtalk-notifier \
+  dingtalk-notifier
 ```
 
 ### 方式三：Docker Compose
