@@ -1,7 +1,6 @@
 import json
 import logging
 from flask import Blueprint, request, jsonify, current_app
-from utils.helpers import flatten_json
 from services.dingtalk import DingTalkService
 
 logger = logging.getLogger(__name__)
@@ -82,8 +81,6 @@ def handle_webhook():
     try:
         if template_name:
             template_svc = current_app.config['TEMPLATE_SERVICE']
-            if isinstance(data_vars, dict) and not raw_text:
-                data_vars = flatten_json(data_vars)
             payload = template_svc.render(template_name, data_vars)
         else:
             payload = build_smart_payload(data_vars, raw_text)
