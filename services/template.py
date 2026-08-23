@@ -35,7 +35,14 @@ def format_time(value, fmt='%Y-%m-%d %H:%M:%S', tz=None):
         return dt.strftime(fmt)
     except Exception:
         return str(value)          # 解析不了就原样返回，绝不丢信息
-
+        
+def fromjson(value):
+    """把 JSON 字符串解析成对象（列表/字典），失败则返回空列表"""
+    try:
+        return json.loads(value)
+    except Exception:
+        logger.warning(f"fromjson 解析失败，返回空列表: {str(value)[:100]}")
+        return []
 
 class TemplateService:
     def __init__(self, config_dir):
@@ -52,6 +59,7 @@ class TemplateService:
         # 注册自定义 filter
         self.env.filters['json_escape'] = json_escape
         self.env.filters['format_time'] = format_time
+        self.env.filters['fromjson'] = fromjson
         logger.info(f"模板引擎初始化成功，目录: {self.config_dir}")
 
     def render(self, template_name, data_vars):
