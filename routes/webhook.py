@@ -100,8 +100,8 @@ def handle_webhook():
 
     # 2. 解析数据 & 构建 Payload (逻辑与之前完全一致)
     data_vars, raw_text = parse_request_body()
-    template_name = request.args.get('template')
-    
+    template_name = request.args.get('template') or request.args.get('layout')   
+        
     try:
         if template_name:
             template_svc = current_app.config['TEMPLATE_SERVICE']
