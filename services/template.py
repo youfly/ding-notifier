@@ -39,7 +39,7 @@ def format_time(value, fmt='%Y-%m-%d %H:%M:%S', tz=None):
 def fromjson(value):
     """把 JSON 字符串解析成对象（列表/字典），失败则返回空列表"""
     try:
-        return json.loads(value)
+        return json.loads(value, strict=False)  # 容忍字符串值里的裸换行等控制字符
     except Exception:
         logger.warning(f"fromjson 解析失败，返回空列表: {str(value)[:100]}")
         return []
