@@ -6,6 +6,10 @@ class Config:
     PORT = int(os.environ.get('PORT', 5005))
     # 基础配置目录 (存放 bots.json 等)
     CONFIG_DIR = os.environ.get('CONFIG_DIR', './config')
+
+    # Bearer Token 鉴权（用于 /api/webhook、/api/send 接口）
+    # 未设置时，认证接口返回 503，不影响原 /webhook、/send 接口
+    BEARER_TOKEN = os.environ.get('BEARER_TOKEN', '')
     
     # 确保路径是绝对路径
     if not os.path.isabs(CONFIG_DIR):
