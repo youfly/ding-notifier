@@ -116,6 +116,22 @@ curl -X POST "http://localhost:5005/webhook?template=alert.json&webhook_url=http
   -d '{"title": "测试"}'
 ```
 
+### 5. Bearer Token 认证接口（新增）
+
+新接口 `/api/webhook` 和 `/api/send` 与原接口用法完全一致（同样支持 `bot`、`template`、`webhook_url`、`secret` 等查询参数和 JSON/表单/纯文本请求体），唯一区别是要求携带 Bearer Token 鉴权：
+
+```bash
+curl -X POST "http://localhost:5005/api/webhook?template=alert.json" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <你的 BEARER_TOKEN>" \
+  -d '{"title": "服务器告警", "message": "CPU 使用率超过 90%"}'
+```
+
+- Token 通过环境变量 `BEARER_TOKEN` 配置（见下方环境变量表）。
+- 未携带 `Authorization` 请求头、格式错误或 Token 不正确时返回 401。
+- 服务端未配置 `BEARER_TOKEN` 时，新接口返回 503。
+- 原接口 `/webhook`、`/send` 保持不变（无鉴权），老代码无需修改。
+
 ## 配置说明
 
 ### 环境变量
@@ -125,6 +141,7 @@ curl -X POST "http://localhost:5005/webhook?template=alert.json&webhook_url=http
 |--------|------|--------|
 | `CONFIG_DIR` | 配置文件目录路径 | `/app/config` (容器内) 或 `./config` (本地) |
 | `PORT` | 服务端口 | `5005` |
+| `BEARER_TOKEN` | Bearer Token 鉴权密钥（用于 `/api/webhook`、`/api/send` 接口），未设置时认证接口不可用 | （空） |
 
 ### 查询参数
 
