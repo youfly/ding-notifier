@@ -1,5 +1,7 @@
 import json
 import logging
+import hmac
+from functools import wraps
 from flask import Blueprint, request, jsonify, current_app
 from services.dingtalk import DingTalkService
 
@@ -59,6 +61,24 @@ def build_smart_payload(data_vars, raw_text):
         content = str(data_vars)
         
     return {"msgtype": "text", "text": {"content": content}}
+
+def require_bearer_token(f):
+    """Bearer Token 鉴权装饰器（用于 /api/webhook、/api/send）。
+    要求请求头: Authorization: Bearer <BEARER_TOKEN>。
+    未配置 BEARER_TOKEN 时返回 503；Token 缺失或错误时返回 401。"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        expected = current_app.config.get('BEARER_TOKEN')
+        if not expected:
+            return jsonify({"error": "服务端未配置 BEARER_TOKEN，认证接口不可用"}), 503
+        auth = request.headers.get('Authorization', '')
+        parts = auth.split(None, 1)
+        if len(parts) != 2 or parts[0].lower() != 'bearer':
+            return jsonify({"error": "缺少或无效的 Authorization: Bearer Token"}), 401
+        if not hmac.compare_digest(parts[1], expected):
+            return jsonify({"error": "无效的 Bearer Token"}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 @webhook_bp.route('/health', methods=['GET'])
 def health():
@@ -135,3 +155,12 @@ def handle_webhook():
         "status": "success" if all_success else "partial_success/failed", 
         "results": results
     }), status_code
+
+@webhook_bp.route('/api/send', methods=['POST', 'GET'])
+@webhook_bp.route('/api/webhook', methods=['POST', 'GET'])
+@require_bearer_token
+def handle_api_webhook():
+    """Bearer Token 认证的钉钉消息发送接口。
+    用法与 /webhook、/send 完全一致，仅多要求 Authorization: Bearer <BEARER_TOKEN> 请求头。
+    原 /webhook、/send 接口保持不变（无鉴权），以兼容老代码。"""
+    return handle_webhook()
