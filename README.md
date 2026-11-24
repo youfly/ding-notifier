@@ -63,6 +63,7 @@ docker run -d \
 
 ```bash
 # 编辑 docker-compose.yml 配置你的 webhook 和密钥
+# 如需启用 /api/webhook、/api/send 鉴权接口，在同目录新建 .env 并写入 BEARER_TOKEN=你的密钥
 # 然后运行：
 docker-compose up -d
 ```

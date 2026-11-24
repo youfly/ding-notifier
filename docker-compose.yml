@@ -11,6 +11,10 @@ services:
       - CONFIG_DIR=/app/config
       # 服务端口 (可选，默认 5000)
       - PORT=5005
+      # Bearer 鉴权密钥（用于 /api/webhook、/api/send 接口）
+      # 从同目录 .env 文件读取，在 .env 中设置 BEARER_TOKEN=你的密钥
+      # 未设置时，/api/webhook、/api/send 返回 503
+      - BEARER_TOKEN=${BEARER_TOKEN}
     volumes:
       # 挂载 config 目录到容器，方便修改模板和变量文件
       - ./config:/app/config
